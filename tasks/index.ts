@@ -11,7 +11,7 @@ task("swap", "init swap")
         const [signer] = await ethers.getSigners();
 
         const bridge: Bridge = <Bridge>(await ethers.getContractAt("Bridge", contract, signer));
-        let tx = await bridge.swap(to, amount, nonce);
+        const tx = await bridge.swap(to, amount, nonce);
 
         console.log(tx);
     });
@@ -28,7 +28,7 @@ task("redeem", "init swap")
         const [signer] = await ethers.getSigners();
 
         const bridge: Bridge = <Bridge>(await ethers.getContractAt("Bridge", contract, signer));
-        let tx = await bridge.redeem(from, amount, nonce, v, r, s);
+        const tx = await bridge.redeem(from, amount, nonce, v, r, s);
 
         console.log(tx);
     });
