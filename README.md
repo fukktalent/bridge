@@ -1,6 +1,5 @@
 Bridge to swap some erc20(mintable and burnable) tokens between two chains.
-Token and chain ids pass in constructor.
-Signature must be created by swap initiator.
+Token, chain ids, validator pass in constructor.
 
 erc20 rinkeby: https://rinkeby.etherscan.io/address/0xfE3A443Ec77316b09d30bDbDB46ee3E27e739a33#code
 

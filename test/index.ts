@@ -9,15 +9,21 @@ describe("Bridge", function () {
     const BNB_CHAIN_ID = 56;
     const SWAP_AMOUNT = 1_000;
 
-    let owner: SignerWithAddress, acc1: SignerWithAddress, acc2: SignerWithAddress;
+    let owner: SignerWithAddress;
+    let acc1: SignerWithAddress;
+    let acc2: SignerWithAddress;
+    let validator: SignerWithAddress;
 
-    let erc20Eth: ERC20PresetMinterPauser, erc20Bnb: ERC20PresetMinterPauser;
-    let bridgeEth: Bridge, bridgeBnb: Bridge;
+    let erc20Eth: ERC20PresetMinterPauser;
+    let erc20Bnb: ERC20PresetMinterPauser;
+
+    let bridgeEth: Bridge;
+    let bridgeBnb: Bridge;
 
     let nonce = 0;
 
     before(async function() {
-        [owner, acc1, acc2] = await ethers.getSigners();
+        [owner, acc1, acc2, validator] = await ethers.getSigners();
 
         erc20Eth = await new ERC20PresetMinterPauser__factory(owner).deploy("test", "TST");
         await erc20Eth.deployed()
@@ -25,10 +31,20 @@ describe("Bridge", function () {
         erc20Bnb = await new ERC20PresetMinterPauser__factory(owner).deploy("test", "TST");
         await erc20Bnb.deployed()
 
-        bridgeEth = await new Bridge__factory(owner).deploy(erc20Eth.address, ETH_CHAIN_ID, BNB_CHAIN_ID);
+        bridgeEth = await new Bridge__factory(owner).deploy(
+            erc20Eth.address,
+            ETH_CHAIN_ID,
+            BNB_CHAIN_ID,
+            owner.address
+        );
         await bridgeEth.deployed();
 
-        bridgeBnb = await new Bridge__factory(owner).deploy(erc20Bnb.address, BNB_CHAIN_ID, ETH_CHAIN_ID);
+        bridgeBnb = await new Bridge__factory(owner).deploy(
+            erc20Bnb.address,
+            BNB_CHAIN_ID,
+            ETH_CHAIN_ID,
+            owner.address
+        );
         await bridgeBnb.deployed();
 
         erc20Eth.mint(acc1.address, SWAP_AMOUNT);
@@ -40,6 +56,18 @@ describe("Bridge", function () {
         await erc20Bnb.grantRole(await erc20Bnb.MINTER_ROLE(), bridgeBnb.address);
     });
 
+    it("Should set correct validator", async function () {
+        await bridgeEth.setValidator(validator.address);
+        expect(await bridgeEth.validator()).to.be.equal(validator.address);
+
+        await bridgeBnb.setValidator(validator.address);
+        expect(await bridgeBnb.validator()).to.be.equal(validator.address);
+    });
+
+    it("Should not set validator and revert ownable error", async function () {
+        const tx = bridgeEth.connect(acc1).setValidator(acc1.address);
+        await expect(tx).to.be.revertedWith("Ownable: caller is not the owner");;
+    });
 
     it("shoould init swap: burn tokens and emit swap event", async function () {
         const tx = await bridgeEth.connect(acc1).swap(acc2.address, SWAP_AMOUNT, nonce);
@@ -76,7 +104,7 @@ describe("Bridge", function () {
             ["address", "address", "uint256", "uint256", "uint128", "uint256"],
             [acc1.address, acc2.address, ETH_CHAIN_ID, BNB_CHAIN_ID, SWAP_AMOUNT, nonce]
         );
-        const signature = await acc1.signMessage(ethers.utils.arrayify(message));
+        const signature = await validator.signMessage(ethers.utils.arrayify(message));
         const { v, r, s } = ethers.utils.splitSignature(signature);
 
         const tx = bridgeBnb.connect(acc1).redeem(acc1.address, SWAP_AMOUNT, nonce, v, r, s);
@@ -88,7 +116,7 @@ describe("Bridge", function () {
             ["address", "address", "uint256", "uint256", "uint128", "uint256"],
             [acc1.address, acc2.address, ETH_CHAIN_ID, BNB_CHAIN_ID, SWAP_AMOUNT, nonce + 1]
         );
-        const signature = await acc1.signMessage(ethers.utils.arrayify(message));
+        const signature = await validator.signMessage(ethers.utils.arrayify(message));
         const { v, r, s } = ethers.utils.splitSignature(signature);
 
         const tx = bridgeBnb.connect(acc2).redeem(acc1.address, SWAP_AMOUNT, nonce, v, r, s);
@@ -100,7 +128,7 @@ describe("Bridge", function () {
             ["address", "address", "uint256", "uint256", "uint128", "uint256"],
             [acc1.address, acc2.address, ETH_CHAIN_ID, BNB_CHAIN_ID, SWAP_AMOUNT, nonce]
         );
-        const signature = await acc1.signMessage(ethers.utils.arrayify(message));
+        const signature = await validator.signMessage(ethers.utils.arrayify(message));
         const { v, r, s } = ethers.utils.splitSignature(signature);
 
         const tx = await bridgeBnb.connect(acc2).redeem(acc1.address, SWAP_AMOUNT, nonce, v, r, s);
@@ -125,7 +153,7 @@ describe("Bridge", function () {
             ["address", "address", "uint256", "uint256", "uint128", "uint256"],
             [acc1.address, acc2.address, ETH_CHAIN_ID, BNB_CHAIN_ID, SWAP_AMOUNT, nonce]
         );
-        const signature = await acc1.signMessage(ethers.utils.arrayify(message));
+        const signature = await validator.signMessage(ethers.utils.arrayify(message));
         const { v, r, s } = ethers.utils.splitSignature(signature);
 
         const tx = bridgeBnb.connect(acc2).redeem(acc1.address, SWAP_AMOUNT, nonce, v, r, s);

@@ -3,8 +3,9 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Bridge {
+contract Bridge is Ownable {
     using ECDSA for bytes32;
 
     ERC20PresetMinterPauser private _token;
@@ -13,6 +14,8 @@ contract Bridge {
 
     uint256 private _chainId;
     uint256 private _swapChainId;
+
+    address private _validator;
 
     event SwapInitialized(
         address from,
@@ -38,11 +41,13 @@ contract Bridge {
     constructor(
         ERC20PresetMinterPauser token,
         uint256 chainId,
-        uint256 swapChainId
+        uint256 swapChainId,
+        address validator_
     ) {
         _token = token;
         _chainId = chainId;
         _swapChainId = swapChainId;
+        _validator = validator_;
     }
 
     function swap(
@@ -82,7 +87,7 @@ contract Bridge {
 
         bytes32 hash = messageHash.toEthSignedMessageHash();
 
-        if (hash.recover(v, r, s) != from) revert InvalidSignature();
+        if (hash.recover(v, r, s) != _validator) revert InvalidSignature();
         if (_isCompleted[hash] == true) revert AlreadyRedeemed();
 
         _isCompleted[hash] = true;
@@ -96,5 +101,13 @@ contract Bridge {
             amount,
             nonce
         );
+    }
+
+    function setValidator(address validator_) external onlyOwner {
+        _validator = validator_;
+    }
+
+    function validator() external view returns(address) {
+        return _validator;
     }
 }
