@@ -10,6 +10,7 @@ async function main() {
         process.env.ERC20_ADDRESS || "0xEE6e0664C3A344EdaC2761DcE2A730e2e345b01d",
         process.env.CHAIN_ID || "97",
         process.env.SWAP_CHAIN_ID || "4",
+        process.env.VALIDATOR_ADDRESS || "0x7BEb0f72845F4248d299A4d11E42724ceAc27aE1"
     );
 
     await bridge.deployed();
